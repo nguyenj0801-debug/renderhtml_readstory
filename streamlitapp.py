@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import re
-from io import StringIO
 
 st.set_page_config(page_title="TRÌNH TẠO TRUYỆN OFFLINE", page_icon="⚡", layout="wide")
 
@@ -11,39 +10,42 @@ BASE_DIR = "./truyen/"
 # CÁC HÀM XỬ LÝ DỮ LIỆU
 # ==========================================
 def parse_metadata_content(content):
-    """Đọc nội dung text của file 000.txt để lấy metadata"""
+    """Đọc nội dung text của file 000.txt theo thứ tự từng dòng"""
+    lines = [line.strip() for line in content.strip().split('\n')]
+    
     metadata = {
-        "Tên truyện": "Truyện chưa đặt tên",
-        "Tác giả": "Đang cập nhật",
-        "Link": "",
-        "Tổng số chương": 0
+        "Tên truyện": lines[0] if len(lines) > 0 and lines[0] else "Truyện chưa đặt tên",
+        "Tác giả": lines[1] if len(lines) > 1 and lines[1] else "Đang cập nhật",
+        "Link": lines[2] if len(lines) > 2 else "",
+        "Tổng số chương": int(lines[3]) if len(lines) > 3 and lines[3].isdigit() else 0,
+        "Chương đang đọc": int(lines[4]) if len(lines) > 4 and lines[4].isdigit() else 0
     }
-    for line in content.split('\n'):
-        if ":" in line:
-            key, val = line.split(":", 1)
-            key = key.strip()
-            val = val.strip()
-            if key == "Tổng số chương":
-                metadata[key] = int(val) if val.isdigit() else 0
-            elif key in metadata:
-                metadata[key] = val
     return metadata
 
 def parse_chapter_content(filename, content):
-    """Phân tích nội dung chương, tách tên chương nếu có prefix 'TÊN CHƯƠNG:'"""
+    """Phân tích nội dung chương: Dòng 1 là tên chương, còn lại là nội dung"""
     lines = content.split('\n')
-    chapter_title = filename.replace(".txt", "") # Mặc định là tên file
+    
+    # Tìm số trong tên file để làm tên dự phòng (VD: 001.txt -> Chương 001)
+    num_match = re.search(r'\d+', filename)
+    fallback_title = f"Chương {num_match.group()}" if num_match else filename.replace(".txt", "")
     
     if lines:
         first_line = lines[0].strip()
-        # Tìm pattern: TÊN CHƯƠNG: [số chương] - [tên chương]
-        if first_line.upper().startswith("TÊN CHƯƠNG:"):
-            chapter_title = first_line[len("TÊN CHƯƠNG:"):].strip()
-            # Bỏ dòng đầu tiên ra khỏi nội dung để không bị lặp
-            content = '\n'.join(lines[1:])
+        # Nếu dòng đầu tiên có chữ, lấy làm tên chương. Nếu trống, lấy số file.
+        if first_line:
+            chapter_title = first_line
+        else:
+            chapter_title = fallback_title
             
+        # Nội dung là các phần còn lại (từ dòng 2 trở đi)
+        content_body = '\n'.join(lines[1:])
+    else:
+        chapter_title = fallback_title
+        content_body = ""
+        
     # Chuyển đổi xuống dòng thành thẻ <br>
-    html_content = content.replace('\n', '<br>')
+    html_content = content_body.replace('\n', '<br>')
     return chapter_title, html_content
 
 def get_local_novels():
@@ -61,6 +63,7 @@ def generate_offline_html(novel_title, metadata, chapters_data):
     """
     # Xử lý ID lưu trữ độc nhất cho từng truyện để localStorage không bị đụng độ
     storage_key = f"reading_progress_{re.sub(r'[^a-zA-Z0-9]', '', novel_title)}"
+    author_name = metadata.get("Tác giả", "Đang cập nhật")
     
     # --- CSS & CẤU TRÚC HTML ---
     html_head = f"""<!DOCTYPE html>
@@ -115,17 +118,28 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         #sidebar {{
             position: fixed;
             top: 0; left: -300px;
-            width: 250px;
+            width: 280px;
             height: 100%;
             background-color: var(--sidebar-bg);
             box-shadow: 2px 0 5px rgba(0,0,0,0.2);
             transition: left 0.3s ease;
             z-index: 1001;
             overflow-y: auto;
-            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
         }}
         #sidebar.open {{ left: 0; }}
         
+        /* Thông tin truyện trong Sidebar */
+        .sidebar-info {{
+            padding: 20px 15px;
+            background-color: #f0f7f0;
+            border-bottom: 2px solid var(--primary);
+            text-align: center;
+        }}
+        .sidebar-info h3 {{ margin: 0; color: var(--primary); font-size: 20px; }}
+        .sidebar-info p {{ margin: 8px 0 0 0; color: #555; font-size: 15px; font-style: italic; }}
+
         /* Lớp phủ màn hình khi mở sidebar */
         #overlay {{
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -135,8 +149,9 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         #overlay.show {{ display: block; }}
 
         /* Menu chương trong Sidebar */
+        #menu-list {{ padding: 10px 0; overflow-y: auto; flex-grow: 1; }}
         .menu-item {{
-            padding: 10px;
+            padding: 12px 15px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
             font-size: 16px;
@@ -179,7 +194,13 @@ def generate_offline_html(novel_title, metadata, chapters_data):
 
     <div id="overlay" onclick="toggleSidebar()"></div>
     <div id="sidebar">
-        <h3 style="text-align:center; color:#4CAF50;">Danh sách chương</h3>
+        <div class="sidebar-info">
+            <h3>{novel_title}</h3>
+            <p>Tác giả: {author_name}</p>
+        </div>
+        <div style="padding: 10px 15px; font-weight: bold; color: #333; background: #fafafa; border-bottom: 1px solid #ddd;">
+            Danh sách chương:
+        </div>
         <div id="menu-list"></div>
     </div>
 
@@ -189,7 +210,8 @@ def generate_offline_html(novel_title, metadata, chapters_data):
             <span class="header-novel-name">{novel_title}</span>
             <span class="header-chap-name" id="display-chap-name">Đang tải...</span>
         </div>
-        <div style="width: 44px;"></div> </div>
+        <div style="width: 44px;"></div>
+    </div>
 
     <div id="content-area">
 """
@@ -224,7 +246,7 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         const chapterTitles = {js_chapters_str};
         const STORAGE_KEY = '{storage_key}';
         
-        // Khôi phục vị trí đọc từ localStorage (nếu không có thì mặc định là 0)
+        // Khôi phục vị trí đọc từ localStorage
         let currentIdx = parseInt(localStorage.getItem(STORAGE_KEY)) || 0;
         if(currentIdx >= totalChapters || currentIdx < 0) currentIdx = 0;
 
