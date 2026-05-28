@@ -364,7 +364,7 @@ if page_selection == "Công cụ xóa HTML":
     with col2:
         st.subheader("2. Nội dung đã chuyển đổi")
         
-        if st.button("Chuyển Đổi Sang Text 🚀", type="primary"):
+        if st.button("Chuyển đổi sang Text 🚀", type="primary"):
             if not html_input.strip():
                 st.warning("Vui lòng nhập nội dung hoặc tải file lên trước khi chuyển đổi!")
             else:
@@ -372,7 +372,7 @@ if page_selection == "Công cụ xóa HTML":
                     converted_text = convert_html_to_plaintext(html_input)
                     st.success("Chuyển đổi thành công!")
                     
-                    st.markdown("**Kết quả (Nhấn biểu tượng 📋 ở góc phải khung dưới để Copy):**")
+                    st.markdown("**Kết quả (nhấn biểu tượng 📋 ở góc phải khung dưới để Copy):**")
                     st.code(converted_text, language="text", wrap_lines=True)
                     
                     st.download_button(
