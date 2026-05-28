@@ -325,9 +325,9 @@ def generate_offline_html(novel_title, metadata, chapters_data):
 # SIDEBAR ĐIỀU HƯỚNG
 # ==========================================
 st.sidebar.title("📌 MENU")
-page_selection = st.sidebar.radio(
+page_selection = st.sidebar.selectbox(
     "Vui lòng chọn chức năng:", 
-    ["1. Công cụ xóa HTML", "2. Trình tạo truyện offline"]
+    ["Công cụ xóa HTML", "Trình tạo truyện offline"]
 )
 st.sidebar.markdown("---")
 st.sidebar.info("Công cụ hỗ trợ tải, dọn dẹp và xuất file HTML truyện offline siêu nhẹ.")
@@ -335,7 +335,7 @@ st.sidebar.info("Công cụ hỗ trợ tải, dọn dẹp và xuất file HTML t
 # ==========================================
 # TRANG 1: CÔNG CỤ XÓA MÃ HTML (TRANG CHỦ)
 # ==========================================
-if page_selection == "1. Công cụ xóa HTML":
+if page_selection == "Công cụ xóa HTML":
     st.title("📝 Trình chuyển đổi HTML sang văn bản thuần")
     st.markdown("Công cụ này giúp bạn gỡ bỏ mọi mã HTML (`<br>`, `<p>`, `<div>`, `<span>`...) và trả về văn bản nguyên gốc, tự động ngắt dòng hợp lý.")
 
@@ -386,7 +386,7 @@ if page_selection == "1. Công cụ xóa HTML":
 # ==========================================
 # TRANG 2: TRÌNH TẠO TRUYỆN OFFLINE + ĐÁNH DẤU
 # ==========================================
-elif page_selection == "2. Trình tạo truyện offline":
+elif page_selection == "Trình tạo truyện offline":
     st.title("⚡ Trình xuất truyện offline (HTML)")
     st.write("Tạo ra một file HTML duy nhất chứa toàn bộ nội dung truyện. Ghi nhớ lịch sử đọc, giao diện tối ưu cho điện thoại.")
 
