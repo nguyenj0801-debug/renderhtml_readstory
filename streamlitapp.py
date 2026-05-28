@@ -380,7 +380,7 @@ if page_selection == "1. Công cụ xóa HTML":
 # ==========================================
 # TRANG 2: TRÌNH TẠO TRUYỆN OFFLINE + ĐÁNH DẤU
 # ==========================================
-elif page_selection == "2. Trình Tạo Truyện Offline":
+elif page_selection == "2. Trình tạo truyện offline":
     st.title("⚡ Trình xuất truyện offline (HTML)")
     st.write("Tạo ra một file HTML duy nhất chứa toàn bộ nội dung truyện. Ghi nhớ lịch sử đọc, giao diện tối ưu cho điện thoại.")
 
@@ -391,7 +391,7 @@ elif page_selection == "2. Trình Tạo Truyện Offline":
     chapters_data = [] 
     ready_to_export = False
 
-    if source_option == "Chọn từ thư mục ./truyen/ (Local)":
+    if source_option == "Chọn từ thư mục ./truyen/ (Github)":
         local_novels = get_local_novels()
         
         # Tạo danh sách phân loại truyện
