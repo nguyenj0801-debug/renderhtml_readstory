@@ -325,7 +325,7 @@ def generate_offline_html(novel_title, metadata, chapters_data):
 # SIDEBAR ĐIỀU HƯỚNG
 # ==========================================
 st.sidebar.title("📌 MENU")
-page_selection = st.sidebar.selectbox(
+page_selection = st.sidebar.radio(
     "Vui lòng chọn chức năng:", 
     ["Công cụ xóa HTML", "Trình tạo truyện offline"]
 )
