@@ -77,22 +77,10 @@ def get_local_novels():
         os.makedirs(BASE_DIR)
     return [d for d in os.listdir(BASE_DIR) if os.path.isdir(os.path.join(BASE_DIR, d))]
 
-def escape_js(text):
-    """Hàm escape chuỗi an toàn cho JavaScript"""
-    if not isinstance(text, str):
-        return str(text)
-    return text.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', ' ')
-
 def generate_offline_html(novel_title, metadata, chapters_data):
     """Hàm tạo file HTML Offline"""
     storage_key = f"reading_progress_{re.sub(r'[^a-zA-Z0-9]', '', novel_title)}"
     author_name = metadata.get("Tác giả", "Đang cập nhật")
-    
-    meta_name_js = escape_js(metadata.get("Tên truyện", novel_title))
-    meta_author_js = escape_js(author_name)
-    meta_link_js = escape_js(metadata.get("Link", ""))
-    meta_total_js = len(chapters_data)
-    default_chap = int(metadata.get("Chương đang đọc", 0))
     
     html_head = f"""<!DOCTYPE html>
 <html lang="vi">
@@ -165,23 +153,6 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         .sidebar-info h3 {{ margin: 0; color: var(--primary); font-size: 20px; }}
         .sidebar-info p {{ margin: 8px 0 0 0; color: #555; font-size: 15px; font-style: italic; }}
 
-        .sidebar-tools {{
-            padding: 15px;
-            background: #fff;
-            border-bottom: 2px solid var(--primary);
-        }}
-        .sidebar-tools button {{
-            width: 100%;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 15px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-        }}
-
         #overlay {{
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); z-index: 1000;
@@ -211,15 +182,15 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         .chapter-content {{ display: none; }}
         .active-chapter {{ display: block; }}
 
-        .btn-nav {{
+        button {{
             padding: 8px 12px;
             font-size: 16px;
             border: none; border-radius: 5px;
             background-color: var(--primary); color: white;
             cursor: pointer;
         }}
-        .btn-nav:disabled {{ background-color: #aaa; cursor: not-allowed; }}
-        .btn-menu {{ background: transparent; color: #333; font-size: 24px; padding: 0 10px; border: none; cursor: pointer; }}
+        button:disabled {{ background-color: #aaa; }}
+        .btn-menu {{ background: transparent; color: #333; font-size: 24px; padding: 0 10px; border: none; }}
         
         .bottom-nav {{
             display: flex; justify-content: space-between;
@@ -235,12 +206,6 @@ def generate_offline_html(novel_title, metadata, chapters_data):
             <h3>{novel_title}</h3>
             <p>Tác giả: {author_name}</p>
         </div>
-        
-        <div class="sidebar-tools">
-            <button onclick="download000Txt()" style="background-color: #2196F3;">📥 Tải 000.txt (Lưu tiến độ)</button>
-            <button onclick="downloadHTML()" style="background-color: #FF9800; margin-bottom: 0;">🌍 Tải HTML Truyện</button>
-        </div>
-
         <div style="padding: 10px 15px; font-weight: bold; color: #333; background: #fafafa; border-bottom: 1px solid #ddd;">
             Danh sách chương:
         </div>
@@ -279,8 +244,8 @@ def generate_offline_html(novel_title, metadata, chapters_data):
     </div>
 
     <div class="bottom-nav">
-        <button class="btn-nav" id="btn-prev" onclick="changeChapter(-1)">⬅️ Chương Trước</button>
-        <button class="btn-nav" id="btn-next" onclick="changeChapter(1)">Chương Sau ➡️</button>
+        <button id="btn-prev" onclick="changeChapter(-1)">⬅️ Chương Trước</button>
+        <button id="btn-next" onclick="changeChapter(1)">Chương Sau ➡️</button>
     </div>
 
     <script>
@@ -288,17 +253,7 @@ def generate_offline_html(novel_title, metadata, chapters_data):
         const chapterTitles = {js_chapters_str};
         const STORAGE_KEY = '{storage_key}';
         
-        // Metadata cho file 000.txt
-        const novelName = '{meta_name_js}';
-        const author = '{meta_author_js}';
-        const link = '{meta_link_js}';
-        const totalChaptersMeta = {meta_total_js};
-        
-        // Chỉ mượn dữ liệu từ 000.txt để khơi tạo ban đầu nếu chưa từng đọc
-        const defaultIdx = {default_chap};
-        let savedIdx = localStorage.getItem(STORAGE_KEY);
-        let currentIdx = savedIdx !== null ? parseInt(savedIdx) : defaultIdx;
-        
+        let currentIdx = parseInt(localStorage.getItem(STORAGE_KEY)) || 0;
         if(currentIdx >= totalChapters || currentIdx < 0) currentIdx = 0;
 
         function toggleSidebar() {{
@@ -348,32 +303,6 @@ def generate_offline_html(novel_title, metadata, chapters_data):
             currentIdx = idx;
             updateUI();
             toggleSidebar();
-        }}
-        
-        function download000Txt() {{
-            const content = `${{novelName}}\\n${{author}}\\n${{link}}\\n${{totalChaptersMeta}}\\n${{currentIdx}}`;
-            const blob = new Blob([content], {{ type: 'text/plain;charset=utf-8' }});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '000.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }}
-
-        function downloadHTML() {{
-            const htmlContent = '<!DOCTYPE html>\\n' + document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], {{ type: 'text/html;charset=utf-8' }});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${{novelName}}_Offline.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }}
 
         window.onload = () => {{
@@ -449,7 +378,7 @@ if page_selection == "1. Công Cụ Xóa HTML (Trang Chủ)":
                     )
 
 # ==========================================
-# TRANG 2: TRÌNH TẠO TRUYỆN OFFLINE + ĐÁNH DẤU
+# TRANG 2: TRÌNH TẠO TRUYỆN OFFLINE + ĐÁNH DẤU (ĐÃ PHÂN LOẠI SELECTBOX)
 # ==========================================
 elif page_selection == "2. Trình Tạo Truyện Offline":
     st.title("⚡ Trình xuất truyện offline (HTML)")
@@ -457,91 +386,127 @@ elif page_selection == "2. Trình Tạo Truyện Offline":
 
     source_option = st.radio("Chọn nguồn dữ liệu:", ["Chọn từ thư mục ./truyen/ (Local)", "Tải lên các file .txt (Upload)"], horizontal=True)
 
-    novel_title = ""
-    metadata = {}
-    chapters_data = [] 
-    ready_to_export = False
-
+    selected_novel_dir = None
+    uploaded_files_dict = None
+    
+    # -------------------------------------------------------------
+    # XỬ LÝ NGUỒN 1: CHỌN TỪ THƯ MỤC LOCAL
+    # -------------------------------------------------------------
     if source_option == "Chọn từ thư mục ./truyen/ (Local)":
         local_novels = get_local_novels()
         if not local_novels:
             st.warning(f"Không tìm thấy thư mục nào trong `{BASE_DIR}`.")
         else:
-            selected_dir = st.selectbox("Chọn bộ truyện để xuất bản hoặc đánh dấu:", local_novels)
-            novel_path = os.path.join(BASE_DIR, selected_dir)
+            # Phân loại danh sách thư mục local
+            uncompleted_novels = []
+            completed_novels = []
             
-            try:
-                # Phân tích file 000.txt
-                with open(os.path.join(novel_path, "000.txt"), "r", encoding="utf-8") as f:
-                    metadata = parse_metadata_content(f.read())
-                novel_title = metadata.get("Tên truyện", selected_dir)
-                
-                # Quét files chương
-                chap_files = [f for f in os.listdir(novel_path) if f.endswith(".txt") and f != "000.txt"]
-                chap_files.sort(key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
-                
-                if chap_files:
-                    for cf in chap_files:
-                        with open(os.path.join(novel_path, cf), "r", encoding="utf-8") as f:
-                            c_title, c_html = parse_chapter_content(cf, f.read())
-                            chapters_data.append({"title": c_title, "content": c_html})
-                    
-                    ready_to_export = True
-                    
-                    # --- TỰ ĐỘNG CẬP NHẬT TỔNG SỐ CHƯƠNG VÀO 000.txt KHI ĐỌC DỮ LIỆU ---
-                    metadata["Tổng số chương"] = len(chapters_data)
-                    file_000_path = os.path.join(novel_path, "000.txt")
+            for folder in local_novels:
+                meta_path = os.path.join(BASE_DIR, folder, "000.txt")
+                if os.path.exists(meta_path):
                     try:
-                        with open(file_000_path, "r", encoding="utf-8") as file:
-                            lines = [line.strip("\n") for line in file.readlines()]
-                        while len(lines) < 5:
-                            lines.append("")
-                        lines[3] = str(len(chapters_data))
-                        with open(file_000_path, "w", encoding="utf-8") as file:
-                            file.write("\n".join(lines))
-                    except Exception as e:
-                        pass
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            meta = parse_metadata_content(f.read())
+                        total = meta.get("Tổng số chương", 0)
+                        current = meta.get("Chương đang đọc", 0)
+                        
+                        # Điều kiện phân loại
+                        if current >= total and total > 0:
+                            completed_novels.append(folder)
+                        else:
+                            uncompleted_novels.append(folder)
+                    except:
+                        uncompleted_novels.append(folder)
                 else:
-                    st.error("Không tìm thấy các file chương (001.txt, 002.txt...)")
+                    uncompleted_novels.append(folder)
+            
+            # Hiển thị giao diện 2 cột Selectbox
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                st.subheader("📖 Truyện CHƯA đọc xong")
+                sel_uncompleted = st.selectbox("Chọn truyện chưa xong:", ["-- Chọn truyện --"] + uncompleted_novels, key="sel_uncompleted")
+            with col_sel2:
+                st.subheader("✅ Truyện ĐÃ đọc xong")
+                sel_completed = st.selectbox("Chọn truyện đã xong:", ["-- Chọn truyện --"] + completed_novels, key="sel_completed")
+            
+            # Đồng bộ bộ truyện được chọn cuối cùng từ 2 selectbox
+            if sel_uncompleted != "-- Chọn truyện --" and sel_completed != "-- Chọn truyện --":
+                st.info("💡 Bạn đang chọn ở cả hai danh sách. Hệ thống sẽ xử lý truyện thuộc nhóm vừa tương tác.")
+            
+            if sel_uncompleted != "-- Chọn truyện --":
+                selected_novel_dir = sel_uncompleted
+            elif sel_completed != "-- Chọn truyện --":
+                selected_novel_dir = sel_completed
+
+            # Tiến hành đọc và tạo data nếu có truyện được chọn
+            if selected_novel_dir:
+                novel_path = os.path.join(BASE_DIR, selected_novel_dir)
+                try:
+                    with open(os.path.join(novel_path, "000.txt"), "r", encoding="utf-8") as f:
+                        metadata = parse_metadata_content(f.read())
+                    novel_title = metadata.get("Tên truyện", selected_novel_dir)
                     
-                # -------------------------------------------------------------
-                # GIAO DIỆN CẬP NHẬT TRẠNG THÁI VÀO 000.txt
-                # -------------------------------------------------------------
-                st.markdown("---")
-                st.subheader("🔖 Đánh Dấu Tiến Độ Đọc (Lưu vào 000.txt)")
-                col_mark1, col_mark2 = st.columns([1, 2])
-                
-                with col_mark1:
-                    current_chap = metadata.get("Chương đang đọc", 0)
-                    new_progress = st.number_input("Chương đang đọc hiện tại:", min_value=0, value=int(current_chap), step=1)
-                    metadata["Chương đang đọc"] = new_progress  # Cập nhật Memory để HTML và file xuất đồng bộ
-                
-                with col_mark2:
-                    st.write("") 
-                    st.write("") 
-                    if st.button("💾 Lưu tiến độ", type="secondary"):
-                        try:
-                            # Đọc lại file để tránh mất các dòng ngoài 5 dòng đầu
-                            with open(file_000_path, "r", encoding="utf-8") as file:
-                                lines = [line.strip("\n") for line in file.readlines()]
-                            
-                            # Đảm bảo file có đủ 5 dòng
-                            while len(lines) < 5:
-                                lines.append("")
-                                
-                            lines[4] = str(new_progress) # Cập nhật dòng số 5
-                            
-                            with open(file_000_path, "w", encoding="utf-8") as file:
-                                file.write("\n".join(lines))
-                                
-                            st.success(f"✅ Đã lưu tiến độ thành công: Chương {new_progress} cho truyện '{novel_title}'")
-                        except Exception as e:
-                            st.error(f"Lỗi ghi file 000.txt: {e}")
-                # -------------------------------------------------------------
+                    chap_files = [f for f in os.listdir(novel_path) if f.endswith(".txt") and f != "000.txt"]
+                    chap_files.sort(key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
+                    
+                    if chap_files:
+                        chapters_data = []
+                        for cf in chap_files:
+                            with open(os.path.join(novel_path, cf), "r", encoding="utf-8") as f:
+                                c_title, c_html = parse_chapter_content(cf, f.read())
+                                chapters_data.append({"title": c_title, "content": c_html})
+                        
+                        # --- Hiển thị Nút Tải Xuống Offline & Trình lưu tiến độ ---
+                        st.markdown("---")
+                        st.success(f"✅ Đã chuẩn bị sẵn sàng dữ liệu cho bộ truyện: **{novel_title}** ({len(chapters_data)} chương)")
+                        
+                        html_output = generate_offline_html(novel_title, metadata, chapters_data)
+                        st.download_button(
+                            label=f"⬇️ TẢI FILE OFFLINE ({novel_title}).html",
+                            data=html_output,
+                            file_name=f"{novel_title}_Offline.html",
+                            mime="text/html",
+                            use_container_width=True,
+                            type="primary",
+                            key="btn_download_local"
+                        )
+                        
+                        st.subheader("🔖 Đánh Dấu Tiến Độ Đọc (Lưu vào 000.txt)")
+                        col_mark1, col_mark2 = st.columns([1, 2])
+                        with col_mark1:
+                            current_chap = metadata.get("Chương đang đọc", 0)
+                            new_progress = st.number_input("Chương đang đọc hiện tại:", min_value=0, value=int(current_chap), step=1)
+                        with col_mark2:
+                            st.write("") 
+                            st.write("") 
+                            if st.button("💾 Lưu tiến độ", type="secondary"):
+                                file_000_path = os.path.join(novel_path, "000.txt")
+                                try:
+                                    with open(file_000_path, "r", encoding="utf-8") as file:
+                                        lines = [line.strip("\n") for line in file.readlines()]
+                                    while len(lines) < 5:
+                                        lines.append("")
+                                    lines[4] = str(new_progress)
+                                    with open(file_000_path, "w", encoding="utf-8") as file:
+                                        file.write("\n".join(lines))
+                                    st.success(f"✅ Đã lưu tiến độ thành công: Chương {new_progress}/{metadata.get('Tổng số chương', 0)}. Hãy reload hoặc chuyển tab để cập nhật lại phân loại selectbox.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Lỗi ghi file 000.txt: {e}")
+                                    
+                        with st.expander("Xem trước danh sách chương đã nhận diện"):
+                            for c in chapters_data[:10]:
+                                st.write(f"- {c['title']}")
+                            if len(chapters_data) > 10:
+                                st.write("... và nhiều chương khác.")
+                    else:
+                        st.error("Không tìm thấy các file chương (001.txt, 002.txt...)")
+                except Exception as e:
+                    st.error(f"Lỗi đọc file Local: {e}")
 
-            except Exception as e:
-                st.error(f"Lỗi đọc file Local: {e}")
-
+    # -------------------------------------------------------------
+    # XỬ LÝ NGUỒN 2: TẢI LÊN FILE .TXT (UPLOAD)
+    # -------------------------------------------------------------
     else:
         uploaded_files = st.file_uploader("Tải lên TẤT CẢ file .txt (Bao gồm file 000.txt và các file chương)", type=["txt"], accept_multiple_files=True, key="novel_uploader")
         
@@ -558,54 +523,44 @@ elif page_selection == "2. Trình Tạo Truyện Offline":
                 metadata = parse_metadata_content(content_000)
                 novel_title = metadata.get("Tên truyện", "Truyện Upload")
                 
-                chap_files.sort(key=lambda x: int(re.search(r'\d+', x.name).group()) if re.search(r'\d+', x.name) else 0)
+                total = metadata.get("Tổng số chương", 0)
+                current = metadata.get("Chương đang đọc", 0)
                 
+                # Phân loại trạng thái truyện tải lên
+                is_completed = (current >= total and total > 0)
+                
+                col_up1, col_up2 = st.columns(2)
+                with col_up1:
+                    st.subheader("📖 Truyện CHƯA đọc xong")
+                    st.selectbox("Danh sách chưa xong:", [novel_title] if not is_completed else ["-- Trống --"], disabled=is_completed, key="sb_up_uncompleted")
+                with col_up2:
+                    st.subheader("✅ Truyện ĐÃ đọc xong")
+                    st.selectbox("Danh sách đã xong:", [novel_title] if is_completed else ["-- Trống --"], disabled=not is_completed, key="sb_up_completed")
+                
+                # Sắp xếp và xử lý dữ liệu chương truyện
+                chap_files.sort(key=lambda x: int(re.search(r'\d+', x.name).group()) if re.search(r'\d+', x.name) else 0)
+                chapters_data = []
                 for uf in chap_files:
                     content_chap = uf.getvalue().decode("utf-8")
                     c_title, c_html = parse_chapter_content(uf.name, content_chap)
                     chapters_data.append({"title": c_title, "content": c_html})
                 
-                metadata["Tổng số chương"] = len(chapters_data)
-                ready_to_export = True
-
-    if ready_to_export:
-        st.markdown("---")
-        st.success(f"✅ Đã quét thành công **{len(chapters_data)}** chương truyện.")
-        
-        html_output = generate_offline_html(novel_title, metadata, chapters_data)
-        
-        col_export1, col_export2 = st.columns(2)
-        with col_export1:
-            st.download_button(
-                label=f"⬇️ TẢI FILE OFFLINE ({novel_title}).html",
-                data=html_output,
-                file_name=f"{novel_title}_Offline.html",
-                mime="text/html",
-                use_container_width=True,
-                type="primary"
-            )
-            
-        with col_export2:
-            # Tải kèm file 000.txt đã được Streamlit cập nhật tổng chương/tiến độ
-            out_name = metadata.get("Tên truyện", novel_title)
-            out_author = metadata.get("Tác giả", "Đang cập nhật")
-            out_link = metadata.get("Link", "")
-            out_total = len(chapters_data)
-            out_current = metadata.get("Chương đang đọc", 0)
-            
-            txt_000_content = f"{out_name}\n{out_author}\n{out_link}\n{out_total}\n{out_current}"
-            
-            st.download_button(
-                label="📥 TẢI FILE 000.txt ĐỒNG BỘ",
-                data=txt_000_content,
-                file_name="000.txt",
-                mime="text/plain",
-                use_container_width=True,
-                type="secondary"
-            )
-        
-        with st.expander("Xem trước danh sách chương đã nhận diện"):
-            for c in chapters_data[:10]:
-                st.write(f"- {c['title']}")
-            if len(chapters_data) > 10:
-                st.write("... và nhiều chương khác.")
+                st.markdown("---")
+                st.success(f"✅ Đã quét thành công **{len(chapters_data)}** chương truyện.")
+                
+                html_output = generate_offline_html(novel_title, metadata, chapters_data)
+                st.download_button(
+                    label=f"⬇️ TẢI FILE OFFLINE ({novel_title}).html",
+                    data=html_output,
+                    file_name=f"{novel_title}_Offline.html",
+                    mime="text/html",
+                    use_container_width=True,
+                    type="primary",
+                    key="btn_download_upload"
+                )
+                
+                with st.expander("Xem trước danh sách chương đã nhận diện"):
+                    for c in chapters_data[:10]:
+                        st.write(f"- {c['title']}")
+                    if len(chapters_data) > 10:
+                        st.write("... và nhiều chương khác.")
